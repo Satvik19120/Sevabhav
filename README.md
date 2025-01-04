@@ -7,7 +7,7 @@ Clone the repository:
 
 bash
 Copy code
-git clone https://https://github.com/Satvik19120/Sanskari_Coders/.git
+git clone https://github.com/Satvik19120/Sanskari_Coders/.git
 Navigate to the project directory:
 
 bash
