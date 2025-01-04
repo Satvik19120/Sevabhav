@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from models import db, User, Medicine, Message, AssistanceRequest
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'h@cksprint@123#'
@@ -61,16 +62,105 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
-        flash('Please log in to access the dashboard.', 'error')
+        flash('Please log in to access your dashboard.', 'error')
         return redirect(url_for('login'))
     
-    return render_template('dashboard.html', user_name=session['user_name'], user_role=session['user_role'])
+    user = User.query.get(session['user_id'])
+    
+    if user.role == 'Doctor':
+        return redirect(url_for('doctor_dashboard'))
+    elif user.role == 'MR':
+        return redirect(url_for('mr_dashboard'))
+    else:
+        flash('Invalid user role.', 'error')
+        return redirect(url_for('login'))
+
+
+@app.route('/doctor_dashboard')
+def doctor_dashboard():
+    if 'user_id' not in session or User.query.get(session['user_id']).role != 'Doctor':
+        flash('Access denied. Doctors only.', 'error')
+        return redirect(url_for('login'))
+    
+    # Example: Fetch medicines and messages for the doctor
+    user = User.query.get(session['user_id'])
+    messages = user.messages_received
+    medicines = Medicine.query.all()
+
+    return render_template('doctor_dashboard.html', user=user, messages=messages, medicines=medicines)
+
+
+@app.route('/mr_dashboard')
+def mr_dashboard():
+    if 'user_id' not in session or User.query.get(session['user_id']).role != 'MR':
+        flash('Access denied. MRs only.', 'error')
+        return redirect(url_for('login'))
+    
+    # Example: Fetch messages sent by the MR and medicine stock details
+    user = User.query.get(session['user_id'])
+    messages = user.messages_sent
+    medicines = Medicine.query.all()
+
+    return render_template('mr_dashboard.html', user=user, messages=messages, medicines=medicines)
+
 
 @app.route('/logout')
 def logout():
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
+
+
+# Send a message
+@app.route('/send_message', methods=['GET', 'POST'])
+def send_message():
+    if 'user_id' not in session:
+        flash('Please log in to send messages.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+
+    if request.method == 'POST':
+        recipient_id = request.form.get('recipient_id')
+        content = request.form.get('content')
+
+        if not recipient_id or not content:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('send_message'))
+
+        recipient = User.query.get(recipient_id)
+        if not recipient:
+            flash('Recipient not found.', 'error')
+            return redirect(url_for('send_message'))
+
+        # Create and save the message
+        message = Message(sender_id=user.id, recipient_id=recipient.id, content=content, timestamp=datetime.utcnow())
+        db.session.add(message)
+        db.session.commit()
+
+        flash('Message sent successfully!', 'success')
+        return redirect(url_for('dashboard'))
+
+    # Fetch potential recipients
+    recipients = User.query.filter(User.id != user.id).all()
+    return render_template('send_message.html', user=user, recipients=recipients)
+
+# View received messages
+@app.route('/received_messages')
+def received_messages():
+    if 'user_id' not in session:
+        flash('Please log in to view messages.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    messages = user.messages_received
+
+    return render_template('received_messages.html', user=user, messages=messages)
+
+
+
+
+
 
 
 
