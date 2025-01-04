@@ -142,7 +142,7 @@ def send_message():
         return redirect(url_for('dashboard'))
 
     # Fetch potential recipients
-    recipients = User.query.filter(User.id != user.id).all()
+    recipients = User.query.filter(User.id != user.id and User.role!=user.role).all()
     return render_template('send_message.html', user=user, recipients=recipients)
 
 # View received messages
@@ -157,6 +157,47 @@ def received_messages():
 
     return render_template('received_messages.html', user=user, messages=messages)
 
+# View all medicines
+@app.route('/medicines')
+def view_medicines():
+    if 'user_id' not in session:
+        flash('Please log in to view medicines.', 'error')
+        return redirect(url_for('login'))
+
+    medicines = Medicine.query.all()
+    return render_template('medicines.html', medicines=medicines)
+
+# Add medicine (for MR)
+@app.route('/add_medicine', methods=['GET', 'POST'])
+def add_medicine():
+    if 'user_id' not in session:
+        flash('Please log in.', 'error')
+        return redirect(url_for('login'))
+    
+    user = User.query.get(session['user_id'])
+    if user.role != 'MR':
+        flash('Access denied. Only MRs can add medicines.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        stock = request.form.get('stock')
+        price = request.form.get('price')
+        alternative = request.form.get('alternative')
+        
+        if not name or not stock or not price:
+            flash('Name, stock, and price are required.', 'error')
+            return redirect(url_for('add_medicine'))
+        
+        # Save medicine
+        medicine = Medicine(name=name, stock=int(stock), price=float(price), alternative=alternative)
+        db.session.add(medicine)
+        db.session.commit()
+        
+        flash('Medicine added successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('add_medicine.html')
 
 
 
