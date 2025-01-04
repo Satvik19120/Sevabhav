@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MR Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Welcome, {{ user.name }}</h1>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </header>
+    
+    <section>
+        <h2>Messages Sent to Doctors</h2>
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>
+                        <strong>To:</strong> Dr. {{ message.recipient.name }} <br>
+                        <strong>Content:</strong> {{ message.content }} <br>
+                        <strong>Time:</strong> {{ message.timestamp }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No messages sent yet.</p>
+        {% endif %}
+    </section>
+    
+    <section>
+        <h2>Manage Medicines</h2>
+        {% if medicines %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Stock</th>
+                        <th>Price</th>
+                        <th>Alternative</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicine in medicines %}
+                        <tr>
+                            <td>{{ medicine.name }}</td>
+                            <td>{{ medicine.stock }}</td>
+                            <td>{{ medicine.price }}</td>
+                            <td>{{ medicine.alternative }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No medicines available.</p>
+        {% endif %}
+    </section>
+    <footer>
+        <a href="{{ url_for('send_message') }}">Send Message</a>
+    </footer>
+</body>
+</html>

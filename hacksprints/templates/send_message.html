@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Send Message</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Send a Message</h1>
+        <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </header>
+    <form method="POST" action="{{ url_for('send_message') }}">
+        <label for="recipient_id">Recipient:</label>
+        <select name="recipient_id" required>
+            <option value="" disabled selected>Select a recipient</option>
+            {% for recipient in recipients %}
+                <option value="{{ recipient.id }}">{{ recipient.name }} ({{ recipient.role }})</option>
+            {% endfor %}
+        </select>
+        <br>
+        <label for="content">Message:</label>
+        <textarea name="content" required></textarea>
+        <br>
+        <button type="submit">Send</button>
+    </form>
+</body>
+</html>
