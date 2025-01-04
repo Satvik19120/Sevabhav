@@ -1,15 +1,18 @@
-To set up the project locally, follow these steps:
 
+This is project  Sevabhav for collabrate doctors and mrs(medical representatives) and medicine distribution either free or at minimum cost for financial weeker  patients 
+
+
+To set up the project locally, follow these steps:
 Clone the repository:
 
 bash
 Copy code
-git clone https://github.com/yourusername/medsync.git
+git clone https://https://github.com/Satvik19120/Sanskari_Coders/.git
 Navigate to the project directory:
 
 bash
 Copy code
-cd medsync
+cd Sanskari_Coders
 Create and activate a virtual environment:
 
 bash
