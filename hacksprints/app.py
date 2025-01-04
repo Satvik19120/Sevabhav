@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-from models import db, User, Medicine, Message, AssistanceRequest
+from models import db, User, Medicine, Message, AssistanceRequest, Appointment, Prescription
 from datetime import datetime
 
 app = Flask(__name__)
@@ -78,18 +78,51 @@ def dashboard():
         return redirect(url_for('login'))
 
 
-@app.route('/doctor_dashboard')
+@app.route('/doctor_dashboard', methods=['GET', 'POST'])
 def doctor_dashboard():
     if 'user_id' not in session or User.query.get(session['user_id']).role != 'Doctor':
-        flash('Access denied. Doctors only.', 'error')
+        flash('Access denied. It\'s For Doctors Only.', 'error')
         return redirect(url_for('login'))
-    
-    # Example: Fetch medicines and messages for the doctor
+
+    user = User.query.get(session['user_id'])
+    #Fetch medicines and messages for the doctor
     user = User.query.get(session['user_id'])
     messages = user.messages_received
     medicines = Medicine.query.all()
+    # Fetch all appointment requests for this doctor
+    appointments = Appointment.query.filter_by(doctor_id=user.id).all()
 
-    return render_template('doctor_dashboard.html', user=user, messages=messages, medicines=medicines)
+    if request.method == 'POST':
+        appointment_id = request.form.get('appointment_id')
+        action = request.form.get('action')
+        prescription_text = request.form.get('prescription')
+
+        # Update appointment status or add prescription
+        if appointment_id:
+            appointment = Appointment.query.get(appointment_id)
+            if appointment:
+                if action == 'Approve':
+                    appointment.status = 'Confirmed'
+                elif action == 'Reject':
+                    appointment.status = 'Rejected'
+                elif action == 'Add Prescription' and prescription_text:
+                    # Add prescription
+                    prescription = Prescription(
+                        appointment_id=appointment.id,
+                        medicine_id=request.form.get('medicine_id'),
+                        dosage=request.form.get('dosage'),
+                        duration=request.form.get('duration')
+                    )
+                    db.session.add(prescription)
+                    appointment.status = 'Completed'
+
+                db.session.commit()
+                flash("Appointment updated successfully!", "success")
+            else:
+                flash("Appointment not found!", "danger")
+
+    return render_template('doctor_dashboard.html', user=user, messages=messages, medicines=medicines, appointments=appointments)
+
 
 
 @app.route('/mr_dashboard')
@@ -105,7 +138,7 @@ def mr_dashboard():
 
     return render_template('mr_dashboard.html', user=user, messages=messages, medicines=medicines)
 
-
+'''
 @app.route('/patient_dashboard', methods=['GET'])
 def patient_dashboard():
     if 'user_id' not in session:
@@ -121,7 +154,25 @@ def patient_dashboard():
     assistance_requests = AssistanceRequest.query.filter_by(patient_name=user.name).all()
 
     return render_template('patient_dashboard.html', assistance_requests=assistance_requests)
+'''
 
+
+@app.route('/patient_dashboard', methods=['GET'])
+def patient_dashboard():
+    if 'user_id' not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Patient':
+        flash("Access restricted to patients only.", "danger")
+        return redirect(url_for('dashboard'))
+    # Fetch all assistance requests for the logged-in patient
+    assistance_requests = AssistanceRequest.query.filter_by(patient_name=user.name).all()
+    # Fetch the patient’s appointments
+    appointments = Appointment.query.filter_by(patient_id=user.id).all()
+
+    return render_template('patient_dashboard.html', user=user, appointments=appointments, assistance_requests=assistance_requests)
 
 
 @app.route('/logout')
@@ -243,6 +294,8 @@ def create_assistance_request():
 
         if not patient_name or not medicine_id:
             flash('Please fill in all required fields.', 'error')
+            check=[patient_name,medicine_id,reason]
+            return check
             return redirect(url_for('create_assistance_request'))
 
         assistance_request = AssistanceRequest(
@@ -272,7 +325,7 @@ def view_assistance_requests():
         flash('Access denied. Only MRs can view assistance requests.', 'error')
         return redirect(url_for('dashboard'))
 
-    requests = AssistanceRequest.query.filter_by(status='Pending').all()  # Fetch all pending requests
+    requests = AssistanceRequest.query.all()  # Fetch all pending requests
 
     if request.method == 'POST':
         request_id = request.form.get('request_id')
@@ -291,8 +344,102 @@ def view_assistance_requests():
     return render_template('view_assistance_requests.html', requests=requests)
 
 
+#appointment booking
+@app.route('/book_appointment', methods=['GET', 'POST'])
+def book_appointment():
+    if 'user_id' not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Patient':
+        flash("Access restricted to patients only.", "danger")
+        return redirect(url_for('dashboard'))
+
+    doctors = User.query.filter_by(role='Doctor').all()
+
+    if request.method == 'POST':
+        doctor_id = request.form['doctor_id']
+        appointment_date_str = request.form['date']
+        date = datetime.strptime(appointment_date_str, '%Y-%m-%dT%H:%M')
+        new_appointment = Appointment(
+            patient_id=user.id,
+            doctor_id=doctor_id,
+            date=date,
+            status='Pending'
+        )
+        db.session.add(new_appointment)
+        db.session.commit()
+        flash("Your appointment request has been submitted!", "success")
+        return redirect(url_for('patient_dashboard'))
+
+    return render_template('book_appointment.html', doctors=doctors)
 
 
+#manage appointment
+@app.route('/manage_appointments', methods=['GET', 'POST'])
+def manage_appointments():
+    if 'user_id' not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Doctor':
+        flash("Access restricted to doctors only.", "danger")
+        return redirect(url_for('dashboard'))
+
+    appointments = Appointment.query.filter_by(doctor_id=user.id).all()
+
+    if request.method == 'POST':
+        appointment_id = int(request.form['appointment_id'])
+        action = request.form['action']  # Confirm or Cancel
+        appointment = Appointment.query.get(appointment_id)
+
+        if action == 'Confirm':
+            appointment.status = 'Confirmed'
+        elif action == 'Cancel':
+            appointment.status = 'Cancelled'
+
+        db.session.commit()
+        flash(f"Appointment #{appointment_id} has been {action.lower()}ed.", "success")
+        return redirect(url_for('manage_appointments'))
+
+    return render_template('manage_appointments.html', appointments=appointments)
+
+
+#medicine prescription
+@app.route('/add_prescription/<int:appointment_id>', methods=['GET', 'POST'])
+def add_prescription(appointment_id):
+    if 'user_id' not in session:
+        flash("Please log in first.", "warning")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Doctor':
+        flash("Access restricted to doctors only.", "danger")
+        return redirect(url_for('home'))
+
+    appointment = Appointment.query.get(appointment_id)
+    medicines = Medicine.query.all()
+
+    if request.method == 'POST':
+        medicine_id = request.form['medicine_id']
+        dosage = request.form['dosage']
+        duration = request.form['duration']
+
+        new_prescription = Prescription(
+            appointment_id=appointment_id,
+            medicine_id=medicine_id,
+            dosage=dosage,
+            duration=duration
+        )
+        appointment.status = 'Completed'  # Mark appointment as completed
+        db.session.add(new_prescription)
+        db.session.commit()
+        flash("Prescription added successfully!", "success")
+        return redirect(url_for('manage_appointments'))
+
+    return render_template('add_prescription.html', appointment=appointment, medicines=medicines)
 
 
 
