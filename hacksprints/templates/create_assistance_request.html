@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Patient Assistance Request</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Create Patient Assistance Request</h1>
+        <a href="{{ url_for('doctor_dashboard') }}">Back to Dashboard</a>
+    </header>
+
+    <form action="{{ url_for('create_assistance_request') }}" method="POST">
+        <label for="patient_name">Patient Name:</label>
+        <select name="patient_name" required>
+            <option value="" disabled selected>Select a Patient</option>
+            {% for patient in patients %}
+                {%if patient.role=='Patient'%}
+                <option value="{{ patient.name }}">{{ patient.name }}</option>
+                {%endif%}
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="medicine_id">Select Medicine:</label>
+        <select name="medicine_id" required>
+            <option value="" disabled selected>Select a medicine</option>
+            {% for medicine in medicines %}
+                <option value="{{ medicine.id }}">{{ medicine.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="reason">Reason (optional):</label>
+        <textarea name="reason"></textarea>
+        <br>
+
+        <button type="submit">Submit Request</button>
+    </form>
+</body>
+</html>

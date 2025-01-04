@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Welcome, {{ session['user_name'] }}</h1>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </header>
+
+    <section>
+        <h2>My Assistance Requests</h2>
+
+        {% if assistance_requests %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Request ID</th>
+                    <th>Medicine</th>
+                    <th>Doctor</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for request in assistance_requests %}
+                <tr>
+                    <td>{{ request.id }}</td>
+                    <td>{{ request.medicine.name }}</td>
+                    <td>Dr. {{ request.doctor.name }}</td>
+                    <td>{{ request.status }}</td>
+                    <td>{{ request.reason or 'N/A' }}</td>
+                    <td>{{ request.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No assistance requests found.</p>
+        {% endif %}
+    </section>
+</body>
+</html>

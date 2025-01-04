@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Medicine</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Add Medicine</h1>
+        <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </header>
+    <form method="POST">
+        <label for="name">Medicine Name:</label>
+        <input type="text" name="name" required>
+        <br>
+        <label for="stock">Stock:</label>
+        <input type="number" name="stock" required>
+        <br>
+        <label for="price">Price:</label>
+        <input type="number" step="0.01" name="price" required>
+        <br>
+        <label for="alternative">Alternative:</label>
+        <input type="text" name="alternative">
+        <br>
+        <button type="submit">Add Medicine</button>
+    </form>
+</body>
+</html>
