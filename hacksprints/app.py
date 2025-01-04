@@ -71,6 +71,8 @@ def dashboard():
         return redirect(url_for('doctor_dashboard'))
     elif user.role == 'MR':
         return redirect(url_for('mr_dashboard'))
+    elif user.role == 'Patient':
+        return redirect(url_for('patient_dashboard'))
     else:
         flash('Invalid user role.', 'error')
         return redirect(url_for('login'))
@@ -102,6 +104,24 @@ def mr_dashboard():
     medicines = Medicine.query.all()
 
     return render_template('mr_dashboard.html', user=user, messages=messages, medicines=medicines)
+
+
+@app.route('/patient_dashboard', methods=['GET'])
+def patient_dashboard():
+    if 'user_id' not in session:
+        flash('Please log in.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Patient':
+        flash('Access denied. Only patients can access this dashboard.', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Fetch all assistance requests for the logged-in patient
+    assistance_requests = AssistanceRequest.query.filter_by(patient_name=user.name).all()
+
+    return render_template('patient_dashboard.html', assistance_requests=assistance_requests)
+
 
 
 @app.route('/logout')
@@ -200,6 +220,75 @@ def add_medicine():
     return render_template('add_medicine.html')
 
 
+
+
+#Patient Assistance System
+@app.route('/create_assistance_request', methods=['GET', 'POST'])
+def create_assistance_request():
+    if 'user_id' not in session:
+        flash('Please log in.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'Doctor':
+        flash('Access denied. Only Doctors can create assistance requests.', 'error')
+        return redirect(url_for('dashboard'))
+
+    medicines = Medicine.query.all()  # Fetch all available medicines
+    patients=User.query.all()
+    if request.method == 'POST':
+        patient_name = request.form.get('patient_name')
+        medicine_id = request.form.get('medicine_id')
+        reason = request.form.get('reason')
+
+        if not patient_name or not medicine_id:
+            flash('Please fill in all required fields.', 'error')
+            return redirect(url_for('create_assistance_request'))
+
+        assistance_request = AssistanceRequest(
+            patient_name=patient_name,
+            doctor_id=user.id,
+            medicine_id=medicine_id,
+            reason=reason,
+            status='Pending'
+        )
+        db.session.add(assistance_request)
+        db.session.commit()
+
+        flash('Patient Assistance Request created successfully!', 'success')
+        return redirect(url_for('doctor_dashboard'))
+
+    return render_template('create_assistance_request.html', medicines=medicines,patients=patients)
+
+#Route for MRs to view and accept/reject request
+@app.route('/view_assistance_requests', methods=['GET', 'POST'])
+def view_assistance_requests():
+    if 'user_id' not in session:
+        flash('Please log in.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user.role != 'MR':
+        flash('Access denied. Only MRs can view assistance requests.', 'error')
+        return redirect(url_for('dashboard'))
+
+    requests = AssistanceRequest.query.filter_by(status='Pending').all()  # Fetch all pending requests
+
+    if request.method == 'POST':
+        request_id = request.form.get('request_id')
+        action = request.form.get('action')
+
+        assistance_request = AssistanceRequest.query.get(request_id)
+        if action == 'approve':
+            assistance_request.status = 'Approved'
+        elif action == 'reject':
+            assistance_request.status = 'Rejected'
+        
+        db.session.commit()
+        flash(f'Request {action}ed successfully!', 'success')
+        return redirect(url_for('view_assistance_requests'))
+
+    return render_template('view_assistance_requests.html', requests=requests)
 
 
 
