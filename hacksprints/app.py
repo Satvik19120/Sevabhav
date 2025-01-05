@@ -287,6 +287,7 @@ def create_assistance_request():
 
     medicines = Medicine.query.all()  # Fetch all available medicines
     patients=User.query.all()
+    assistance_requests = AssistanceRequest.query.filter_by(doctor_id=user.id).all()
     if request.method == 'POST':
         patient_name = request.form.get('patient_name')
         medicine_id = request.form.get('medicine_id')
@@ -295,7 +296,6 @@ def create_assistance_request():
         if not patient_name or not medicine_id:
             flash('Please fill in all required fields.', 'error')
             check=[patient_name,medicine_id,reason]
-            return check
             return redirect(url_for('create_assistance_request'))
 
         assistance_request = AssistanceRequest(
@@ -311,7 +311,7 @@ def create_assistance_request():
         flash('Patient Assistance Request created successfully!', 'success')
         return redirect(url_for('doctor_dashboard'))
 
-    return render_template('create_assistance_request.html', medicines=medicines,patients=patients)
+    return render_template('create_assistance_request.html', medicines=medicines,patients=patients,assistance_requests=assistance_requests)
 
 #Route for MRs to view and accept/reject request
 @app.route('/view_assistance_requests', methods=['GET', 'POST'])
@@ -408,38 +408,31 @@ def manage_appointments():
 
 
 #medicine prescription
-@app.route('/add_prescription/<int:appointment_id>', methods=['GET', 'POST'])
-def add_prescription(appointment_id):
-    if 'user_id' not in session:
-        flash("Please log in first.", "warning")
-        return redirect(url_for('login'))
 
-    user = User.query.get(session['user_id'])
-    if user.role != 'Doctor':
-        flash("Access restricted to doctors only.", "danger")
-        return redirect(url_for('home'))
 
-    appointment = Appointment.query.get(appointment_id)
-    medicines = Medicine.query.all()
-
+@app.route('/prescribe_medicine/<int:appointment_id>', methods=['GET', 'POST'])
+def prescribe_medicine(appointment_id):
     if request.method == 'POST':
-        medicine_id = request.form['medicine_id']
-        dosage = request.form['dosage']
-        duration = request.form['duration']
+        medicine_id = request.form.get('medicine_id')
+        dosage = request.form.get('dosage')
+        duration = request.form.get('duration')
 
-        new_prescription = Prescription(
+        # Add prescription to the database
+        prescription = Prescription(
             appointment_id=appointment_id,
             medicine_id=medicine_id,
             dosage=dosage,
             duration=duration
         )
-        appointment.status = 'Completed'  # Mark appointment as completed
-        db.session.add(new_prescription)
+        db.session.add(prescription)
         db.session.commit()
-        flash("Prescription added successfully!", "success")
-        return redirect(url_for('manage_appointments'))
 
-    return render_template('add_prescription.html', appointment=appointment, medicines=medicines)
+        flash('Prescription added successfully!', 'success')
+        return redirect(url_for('doctor_dashboard'))
+
+    appointment = Appointment.query.get_or_404(appointment_id)
+    medicines = Medicine.query.all()
+    return render_template('prescribe_medicine.html', appointment=appointment, medicines=medicines)
 
 
 
