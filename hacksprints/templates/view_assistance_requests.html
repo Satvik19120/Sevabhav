@@ -2,14 +2,17 @@
 <html>
 <head>
     <title>View Assistance Requests</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='home_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_style.css') }}">
 </head>
 <body>
     <header>
         <h1>View Patient Assistance Requests</h1>
-        <a href="{{ url_for('mr_dashboard') }}">Back to Dashboard</a>
+        <h2><a href="{{ url_for('mr_dashboard') }}">Back to Dashboard</a></h2>
     </header>
-
+    <br>
+    <hr>
+    <br>
+    <section>
     <table>
         <thead>
             <tr>
@@ -29,6 +32,8 @@
                     <td>Dr. {{ request.doctor.name }}</td>
                     <td>{{ request.reason }}</td>
                     <td>{{ request.status }}</td>
+
+                    {%if request.status == 'Pending'%}
                     <td>
                         <form method="POST" action="{{ url_for('view_assistance_requests') }}">
                             <input type="hidden" name="request_id" value="{{ request.id }}">
@@ -36,9 +41,21 @@
                             <button type="submit" name="action" value="reject">Reject</button>
                         </form>
                     </td>
+                    {%else%}
+                    <td>Completed</td>
+                    {%endif%}
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+</section>
+<br>
+    <hr>
+    <footer>
+        
+        <br>
+        <h3 style="margin: 20px; text-align-last: center;"> Smile You   are   a   Sevabhav   Member</h3>
+        <br>
+    </footer>
 </body>
 </html>
