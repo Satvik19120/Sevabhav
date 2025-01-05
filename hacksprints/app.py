@@ -87,10 +87,12 @@ def doctor_dashboard():
     user = User.query.get(session['user_id'])
     #Fetch medicines and messages for the doctor
     user = User.query.get(session['user_id'])
-    messages = user.messages_received
+    messages = Message.query.all()
     medicines = Medicine.query.all()
     # Fetch all appointment requests for this doctor
     appointments = Appointment.query.filter_by(doctor_id=user.id).all()
+    #Fetch all created assistance request for background area patients
+    assistance_requests = AssistanceRequest.query.filter_by(doctor_id=user.id).all()
 
     if request.method == 'POST':
         appointment_id = request.form.get('appointment_id')
@@ -105,7 +107,7 @@ def doctor_dashboard():
                     appointment.status = 'Confirmed'
                 elif action == 'Reject':
                     appointment.status = 'Rejected'
-                elif action == 'Add Prescription' and prescription_text:
+                elif action == 'Confirmed' and prescription_text:
                     # Add prescription
                     prescription = Prescription(
                         appointment_id=appointment.id,
@@ -121,7 +123,7 @@ def doctor_dashboard():
             else:
                 flash("Appointment not found!", "danger")
 
-    return render_template('doctor_dashboard.html', user=user, messages=messages, medicines=medicines, appointments=appointments)
+    return render_template('doctor_dashboard.html', user=user, messages=messages, medicines=medicines, appointments=appointments, assistance_requests=assistance_requests)
 
 
 
@@ -131,30 +133,14 @@ def mr_dashboard():
         flash('Access denied. MRs only.', 'error')
         return redirect(url_for('login'))
     
-    # Example: Fetch messages sent by the MR and medicine stock details
     user = User.query.get(session['user_id'])
-    messages = user.messages_sent
+    #Fetch messages sent by the MR and medicine stock details
+    messages = Message.query.all()
     medicines = Medicine.query.all()
+    #Fetch requests to donate medicines
+    requests = AssistanceRequest.query.all()
+    return render_template('mr_dashboard.html', user=user, messages=messages, medicines=medicines, requests=requests)
 
-    return render_template('mr_dashboard.html', user=user, messages=messages, medicines=medicines)
-
-'''
-@app.route('/patient_dashboard', methods=['GET'])
-def patient_dashboard():
-    if 'user_id' not in session:
-        flash('Please log in.', 'error')
-        return redirect(url_for('login'))
-
-    user = User.query.get(session['user_id'])
-    if user.role != 'Patient':
-        flash('Access denied. Only patients can access this dashboard.', 'error')
-        return redirect(url_for('dashboard'))
-
-    # Fetch all assistance requests for the logged-in patient
-    assistance_requests = AssistanceRequest.query.filter_by(patient_name=user.name).all()
-
-    return render_template('patient_dashboard.html', assistance_requests=assistance_requests)
-'''
 
 
 @app.route('/patient_dashboard', methods=['GET'])
@@ -171,8 +157,9 @@ def patient_dashboard():
     assistance_requests = AssistanceRequest.query.filter_by(patient_name=user.name).all()
     # Fetch the patient’s appointments
     appointments = Appointment.query.filter_by(patient_id=user.id).all()
-
-    return render_template('patient_dashboard.html', user=user, appointments=appointments, assistance_requests=assistance_requests)
+    medicines=Medicine.query.all()
+    doctors=User.query.all()
+    return render_template('patient_dashboard.html', user=user,doctors=doctors,medicines=medicines, appointments=appointments, assistance_requests=assistance_requests)
 
 
 @app.route('/logout')
@@ -287,7 +274,6 @@ def create_assistance_request():
 
     medicines = Medicine.query.all()  # Fetch all available medicines
     patients=User.query.all()
-    assistance_requests = AssistanceRequest.query.filter_by(doctor_id=user.id).all()
     if request.method == 'POST':
         patient_name = request.form.get('patient_name')
         medicine_id = request.form.get('medicine_id')
@@ -311,7 +297,7 @@ def create_assistance_request():
         flash('Patient Assistance Request created successfully!', 'success')
         return redirect(url_for('doctor_dashboard'))
 
-    return render_template('create_assistance_request.html', medicines=medicines,patients=patients,assistance_requests=assistance_requests)
+    return render_template('create_assistance_request.html', medicines=medicines,patients=patients)
 
 #Route for MRs to view and accept/reject request
 @app.route('/view_assistance_requests', methods=['GET', 'POST'])
@@ -412,10 +398,19 @@ def manage_appointments():
 
 @app.route('/prescribe_medicine/<int:appointment_id>', methods=['GET', 'POST'])
 def prescribe_medicine(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    medicines = Medicine.query.all()
+    user = User.query.get(session['user_id'])
     if request.method == 'POST':
+        # Retrieve form data
         medicine_id = request.form.get('medicine_id')
         dosage = request.form.get('dosage')
         duration = request.form.get('duration')
+
+        # Validate the inputs
+        if not medicine_id or not dosage or not duration:
+            flash('All fields are required to prescribe medicine.', 'danger')
+            return redirect(url_for('prescribe_medicine',user=user, appointment_id=appointment_id,medicines=medicines))
 
         # Add prescription to the database
         prescription = Prescription(
@@ -425,14 +420,14 @@ def prescribe_medicine(appointment_id):
             duration=duration
         )
         db.session.add(prescription)
+        appointment.status = 'Completed'  # Mark appointment as completed
         db.session.commit()
 
         flash('Prescription added successfully!', 'success')
         return redirect(url_for('doctor_dashboard'))
 
-    appointment = Appointment.query.get_or_404(appointment_id)
-    medicines = Medicine.query.all()
-    return render_template('prescribe_medicine.html', appointment=appointment, medicines=medicines)
+    return render_template('prescribe_medicine.html',user=user, appointment=appointment, medicines=medicines)
+
 
 
 
