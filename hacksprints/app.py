@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'h@cksprint@123#'
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hacksprint.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(DATABASE_URL)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 
 app.app_context().push()
 db.init_app(app)
