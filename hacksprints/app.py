@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from models import db, User, Medicine, Message, AssistanceRequest, Appointment, Prescription
 from datetime import datetime
-
+import os
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'h@cksprint@123#'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hacksprint.db'
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hacksprint.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(DATABASE_URL)
+
 app.app_context().push()
 db.init_app(app)
 print("----your application started----")
